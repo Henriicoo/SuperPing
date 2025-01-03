@@ -185,7 +185,7 @@ public final class SuperPing extends JavaPlugin implements Listener {
             double eLoc = 0;
             double yLoc = 0;
 
-            if (isFullBlock) {
+            if (isFullBlock && !Tag.PRESSURE_PLATES.isTagged(b.getType()) && !b.getType().toString().contains("CORAL")) {
                 e = b.getWorld().spawn(b.getLocation(), Shulker.class);
                 e.setGravity(false);
                 ((Shulker) e).setAI(false);
@@ -244,7 +244,8 @@ public final class SuperPing extends JavaPlugin implements Listener {
             Location checkLocation = eyeLocation.clone().add(direction.clone().multiply(i));
             Block b = checkLocation.getBlock();
             if (b.getType() != Material.AIR && b.isSolid() && !Tag.ALL_SIGNS.isTagged(b.getType()) && !b.getType().toString().contains("CHEST")
-            && !Tag.BANNERS.isTagged(b.getType()) && !Tag.BEDS.isTagged(b.getType())) {
+            && !Tag.BANNERS.isTagged(b.getType()) && !Tag.BEDS.isTagged(b.getType()) &&
+            !b.getType().toString().equalsIgnoreCase("BAMBOO") && !b.getType().toString().equalsIgnoreCase("POINTED_DRIPSTONE")) {
                 return checkLocation.getBlock();
             }
 
