@@ -7,7 +7,9 @@ import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffect;
@@ -48,29 +50,41 @@ public final class SuperPing extends JavaPlugin implements Listener {
             team.unregister();
     }
 
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onPlayerInteracEntity(PlayerInteractEntityEvent event) {
+        if(event.getPlayer().getInventory().getItemInMainHand().getType() != Material.AIR &&  event.getPlayer().getInventory().getItemInMainHand().getType() == Material.COMPASS) {
+            event.setCancelled(true);
+            handlePingEvent(event.getPlayer());
+        }
+    }
+
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
         if(event.getAction().isRightClick() && event.getItem() != null && event.getItem().getType() == Material.COMPASS) {
             event.setCancelled(true);
+            handlePingEvent(event.getPlayer());
+        }
+    }
 
-            if(playerPingList.contains(event.getPlayer().getUniqueId())) {
-                event.getPlayer().sendActionBar(Component.text("§cEspere alguns segundos antes de pingar novamente."));
-                event.getPlayer().playSound(event.getPlayer().getLocation(), Sound.BLOCK_NOTE_BLOCK_SNARE, 0.5F, 0.5F);
-                return;
-            }
+    private void handlePingEvent(Player p) {
 
-            Object target = getTarget(event.getPlayer(), 50);
-            playerPingList.add(event.getPlayer().getUniqueId());
-            Bukkit.getScheduler().scheduleSyncDelayedTask(this, () -> playerPingList.remove(event.getPlayer().getUniqueId()),20L);
+        if(playerPingList.contains(p.getUniqueId())) {
+            p.sendActionBar(Component.text("§cEspere alguns segundos antes de pingar novamente."));
+            p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_SNARE, 0.5F, 0.5F);
+            return;
+        }
 
-            if (target instanceof Entity) {
-                handlePing(target, PingType.ENTITY, ((LivingEntity) target).getEyeLocation(),event.getPlayer());
-            } else if (target instanceof org.bukkit.block.Block) {
-                handlePing(target, PingType.BLOCK, ((Block) target).getLocation(),event.getPlayer());
-            } else {
-                event.getPlayer().sendActionBar(Component.text("§cNenhum bloco ou entidade encontrado num raio de 50 blocos."));
-                event.getPlayer().playSound(event.getPlayer().getLocation(),Sound.BLOCK_NOTE_BLOCK_SNARE,0.5F,0.5F);
-            }
+        Object target = getTarget(p, 50);
+        playerPingList.add(p.getUniqueId());
+        Bukkit.getScheduler().scheduleSyncDelayedTask(this, () -> playerPingList.remove(p.getUniqueId()),20L);
+
+        if (target instanceof Entity) {
+            handlePing(target, PingType.ENTITY, ((LivingEntity) target).getEyeLocation(),p);
+        } else if (target instanceof org.bukkit.block.Block) {
+            handlePing(target, PingType.BLOCK, ((Block) target).getLocation(),p);
+        } else {
+            p.sendActionBar(Component.text("§cNenhum bloco ou entidade encontrado num raio de 50 blocos."));
+            p.playSound(p.getLocation(),Sound.BLOCK_NOTE_BLOCK_SNARE,0.5F,0.5F);
         }
     }
 
