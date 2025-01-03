@@ -2,7 +2,6 @@ package com.henriquenapimo1.ping;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.title.Title;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.entity.*;
@@ -92,10 +91,13 @@ public final class SuperPing extends JavaPlugin implements Listener {
         p.playSound(p.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, SoundCategory.MASTER, 0.5F, 0.5F);
 
         // PARTÍCULAS TRAIL
-        double distance = p.getEyeLocation().distance(l);
+        double distance = p.getLocation().distance(l);
 
-        Vector p1 = p.getEyeLocation().toVector();
+        Vector p1 = p.getLocation().add(0,1,0).toVector();
         Vector p2 = l.toVector();
+
+        if(t==PingType.BLOCK)
+            p2 = l.clone().add(0.5, 0.5, 0.5).toVector();
 
         Vector vector = p2.clone().subtract(p1).normalize().multiply(0.2);
 
@@ -118,7 +120,7 @@ public final class SuperPing extends JavaPlugin implements Listener {
                 int counter = 0;
                 @Override
                 public void run() {
-                    drawArrow(((LivingEntity) l.getWorld().getEntity(e.getUniqueId())).getEyeLocation()); // TODO: algo pra cancelar caso morra/suma/etc
+                    l.getWorld().getPlayersSeeingChunk(l.getChunk()).forEach(p -> drawArrow(e.getEyeLocation(),p));
                     counter += 1;
                     if(counter >= 100) {
                         Bukkit.getScheduler().cancelTask(taskId[0]);
@@ -173,12 +175,12 @@ public final class SuperPing extends JavaPlugin implements Listener {
         return null;
     }
 
-    private void drawArrow(Location location) {
+    private void drawArrow(Location location, Player p) {
         double space = 0.20;
         double defX = location.getX() - (space * arrow[0].length / 2) + (space/2);
         double x = defX;
         double y = location.clone().getY() + 3.5;
-        double fire = Math.toRadians(location.getYaw());
+        double fire = Math.toRadians(p.getYaw());
 
         for (boolean[] booleans : arrow) {
             for (boolean aBoolean : booleans) {
