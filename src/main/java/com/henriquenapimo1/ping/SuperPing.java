@@ -178,18 +178,34 @@ public final class SuperPing extends JavaPlugin implements Listener {
         } else {
             Block b = (Block) ping;
 
-            BlockDisplay e = b.getWorld().spawn(b.getLocation().clone().add(0,0,0), BlockDisplay.class);
-            e.setBlock(b.getBlockData());
+            boolean isFullBlock = b.getCollisionShape().getBoundingBoxes().stream().allMatch(
+                    box -> box.getMinX() == 0.0 && box.getMinY() == 0.0 && box.getMinZ() == 0.0 && box.getMaxX() == 1.0 && box.getMaxY() == 1.0 && box.getMaxZ() == 1.0);
+
+            Entity e;
+            double eLoc = 0;
+            double yLoc = 0;
+
+            if (isFullBlock) {
+                e = b.getWorld().spawn(b.getLocation(), Shulker.class);
+                e.setGravity(false);
+                ((Shulker) e).setAI(false);
+                e.setInvulnerable(true);
+                yLoc = 0.5;
+            } else {
+                e = b.getWorld().spawn(b.getLocation().clone().add(0,0,0), BlockDisplay.class);
+                ((BlockDisplay) e).setBlock(b.getBlockData());
+                eLoc = 0.5;
+            }
+
             e.setGlowing(true);
             e.setInvisible(true);
-
             team.addEntity(e);
 
             target.text(Component.empty().append(Component.translatable(b.getType().translationKey()).color(TextColor.color(NamedTextColor.DARK_GRAY))));
 
-            dist.teleport(e.getLocation().clone().add(0.5,1.20+0.5,0.5));
-            target.teleport(e.getLocation().clone().add(0.5,0.95+0.5,0.5));
-            player.teleport(e.getLocation().clone().add(0.5,0.60+0.5,0.5));
+            dist.teleport(e.getLocation().clone().add(eLoc,1.20+0.5+yLoc,eLoc));
+            target.teleport(e.getLocation().clone().add(eLoc,0.95+0.5+yLoc,eLoc));
+            player.teleport(e.getLocation().clone().add(eLoc,0.60+0.5+yLoc,eLoc));
 
             int[] taskId = new int[1];
             taskId[0] = Bukkit.getScheduler().scheduleSyncRepeatingTask(this, new Runnable() {
