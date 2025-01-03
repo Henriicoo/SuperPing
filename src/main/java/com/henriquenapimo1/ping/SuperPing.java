@@ -1,15 +1,12 @@
 package com.henriquenapimo1.ping;
 
-//import org.bukkit.Bukkit;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-//import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
-//import org.bukkit.event.player.PlayerToggleSneakEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
@@ -27,16 +24,24 @@ public final class SuperPing extends JavaPlugin implements Listener {
 
     @Override
     public void onEnable() {
-        getServer().getPluginManager().registerEvents(this,this);
+        getServer().getPluginManager().registerEvents(this, this);
 
         Scoreboard board = Bukkit.getScoreboardManager().getMainScoreboard();
-        team = board.registerNewTeam("pingColorBlue");
-        team.color(NamedTextColor.AQUA);
+        if (board.getTeam("pingColorBlue") == null) {
+            team = board.registerNewTeam("pingColorBlue");
+        } else {
+            team = board.getTeam("pingColorBlue");
+        }
+
+        if (team != null) {
+            team.color(NamedTextColor.AQUA);
+        }
     }
 
     @Override
     public void onDisable() {
-        team.unregister();
+        if(team != null)
+            team.unregister();
     }
 
     private final String pref = "§7[§e§lSuperPing§7]";
@@ -44,6 +49,8 @@ public final class SuperPing extends JavaPlugin implements Listener {
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
         if(event.getAction().isRightClick() && event.getItem() != null && event.getItem().getType() == Material.COMPASS) {
+            event.setCancelled(true);
+
             Object target = getTarget(event.getPlayer(), 50);
 
             if (target instanceof Entity) {
@@ -64,7 +71,6 @@ public final class SuperPing extends JavaPlugin implements Listener {
     private void handlePing(Object ping, PingType t, Location l, Player p) {
         if(pingList.contains(ping)) {
             p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_SNARE, 0.5F, 0.5F);
-            p.sendMessage(pref + " Já existe um ping neste local!");
             return;
         }
 
@@ -135,14 +141,19 @@ public final class SuperPing extends JavaPlugin implements Listener {
 
         for (int i = 0; i < range; i++) {
             Location checkLocation = eyeLocation.clone().add(direction.clone().multiply(i));
-
-            if (checkLocation.getBlock().getType() != Material.AIR) {
-                return checkLocation.getBlock();
+            Block b = checkLocation.getBlock();
+            if (b.getType() != Material.AIR && b.isSolid() && !Tag.ALL_SIGNS.isTagged(b.getType()) && !Tag.PRESSURE_PLATES.isTagged(b.getType())
+            && !Tag.BANNERS.isTagged(b.getType()) && !b.getType().toString().contains("CORAL")) {
+                boolean isFullBlock = b.getCollisionShape().getBoundingBoxes().stream().allMatch(
+                        box -> box.getMinX() == 0.0 && box.getMinY() == 0.0 && box.getMinZ() == 0.0 && box.getMaxX() == 1.0 && box.getMaxY() == 1.0 && box.getMaxZ() == 1.0);
+                if (isFullBlock) {
+                    return checkLocation.getBlock();
+                }
             }
 
             List<Entity> nearbyEntities = (List<Entity>) checkLocation.getWorld().getNearbyEntities(checkLocation, 0.5, 0.5, 0.5);
             for (Entity entity : nearbyEntities) {
-                if (!team.hasEntity(entity) && entity != player) {
+                if (!team.hasEntity(entity) && entity != player && entity instanceof LivingEntity) {
                     return entity;
                 }
             }
