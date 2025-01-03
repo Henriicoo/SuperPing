@@ -67,7 +67,6 @@ public final class SuperPing extends JavaPlugin implements Listener {
     }
 
     private void handlePingEvent(Player p) {
-
         if(playerPingList.contains(p.getUniqueId())) {
             p.sendActionBar(Component.text("§cEspere alguns segundos antes de pingar novamente."));
             p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_SNARE, 0.5F, 0.5F);
@@ -178,20 +177,19 @@ public final class SuperPing extends JavaPlugin implements Listener {
             },0L,1L);
         } else {
             Block b = (Block) ping;
-            Shulker e = b.getWorld().spawn(b.getLocation(), Shulker.class);
-            e.setGravity(false);
-            e.setAI(false);
-            e.setInvulnerable(true);
+
+            BlockDisplay e = b.getWorld().spawn(b.getLocation().clone().add(0,0,0), BlockDisplay.class);
+            e.setBlock(b.getBlockData());
+            e.setGlowing(true);
             e.setInvisible(true);
 
-            e.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING,5*20,1,false,false));
             team.addEntity(e);
 
             target.text(Component.empty().append(Component.translatable(b.getType().translationKey()).color(TextColor.color(NamedTextColor.DARK_GRAY))));
 
-            dist.teleport(e.getEyeLocation().clone().add(0,1.20,0));
-            target.teleport(e.getEyeLocation().clone().add(0,0.95,0));
-            player.teleport(e.getEyeLocation().clone().add(0,0.60,0));
+            dist.teleport(e.getLocation().clone().add(0.5,1.20+0.5,0.5));
+            target.teleport(e.getLocation().clone().add(0.5,0.95+0.5,0.5));
+            player.teleport(e.getLocation().clone().add(0.5,0.60+0.5,0.5));
 
             int[] taskId = new int[1];
             taskId[0] = Bukkit.getScheduler().scheduleSyncRepeatingTask(this, new Runnable() {
@@ -229,13 +227,9 @@ public final class SuperPing extends JavaPlugin implements Listener {
         for (int i = 0; i < range; i++) {
             Location checkLocation = eyeLocation.clone().add(direction.clone().multiply(i));
             Block b = checkLocation.getBlock();
-            if (b.getType() != Material.AIR && b.isSolid() && !Tag.ALL_SIGNS.isTagged(b.getType()) && !Tag.PRESSURE_PLATES.isTagged(b.getType())
-            && !Tag.BANNERS.isTagged(b.getType()) && !b.getType().toString().contains("CORAL")) {
-                boolean isFullBlock = b.getCollisionShape().getBoundingBoxes().stream().allMatch(
-                        box -> box.getMinX() == 0.0 && box.getMinY() == 0.0 && box.getMinZ() == 0.0 && box.getMaxX() == 1.0 && box.getMaxY() == 1.0 && box.getMaxZ() == 1.0);
-                if (isFullBlock) {
-                    return checkLocation.getBlock();
-                }
+            if (b.getType() != Material.AIR && b.isSolid() && !Tag.ALL_SIGNS.isTagged(b.getType()) && !b.getType().toString().contains("CHEST")
+            && !Tag.BANNERS.isTagged(b.getType()) && !Tag.BEDS.isTagged(b.getType())) {
+                return checkLocation.getBlock();
             }
 
             List<Entity> nearbyEntities = (List<Entity>) checkLocation.getWorld().getNearbyEntities(checkLocation, 0.5, 0.5, 0.5);
