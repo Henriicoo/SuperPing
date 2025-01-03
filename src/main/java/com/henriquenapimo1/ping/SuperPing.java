@@ -147,7 +147,7 @@ public final class SuperPing extends JavaPlugin implements Listener {
                     p.sendActionBar(Component.empty().append(
                             Component.text("§bAlvo: ")
                                     .append(Component.translatable(e.getType().translationKey()).color(TextColor.color(NamedTextColor.AQUA))
-                                            .append(Component.text(" | Distância: "+((int) distText)+" m")))));
+                                            .append(Component.text(" | Distância: "+((int) distText)+" m (X: "+e.getX()+", Y: "+e.getY()+", Z: "+e.getZ()+")")))));
 
                     counter += 1;
                     if(counter >= 100) {
@@ -190,7 +190,7 @@ public final class SuperPing extends JavaPlugin implements Listener {
                     p.sendActionBar(Component.empty().append(
                             Component.text("§bAlvo: ")
                                     .append(Component.translatable(b.getType().translationKey()).color(TextColor.color(NamedTextColor.AQUA))
-                                            .append(Component.text(" | Distância: "+((int) distText)+" m")))));
+                                            .append(Component.text(" | Distância: "+((int) distText)+" m (X: "+b.getX()+", Y: "+b.getY()+", Z: "+b.getZ()+")")))));
 
                     counter += 1;
                     if(counter >= 100) {
