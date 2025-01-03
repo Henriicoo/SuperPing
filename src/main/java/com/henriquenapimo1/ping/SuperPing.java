@@ -1,6 +1,8 @@
 package com.henriquenapimo1.ping;
 
+import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.title.Title;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.entity.*;
@@ -16,11 +18,13 @@ import org.bukkit.util.Vector;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 public final class SuperPing extends JavaPlugin implements Listener {
 
     private static Team team;
     private final List<Object> pingList = new ArrayList<>();
+    private final List<UUID> playerPingList = new ArrayList<>();
 
     @Override
     public void onEnable() {
@@ -44,21 +48,27 @@ public final class SuperPing extends JavaPlugin implements Listener {
             team.unregister();
     }
 
-    private final String pref = "§7[§e§lSuperPing§7]";
-
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
         if(event.getAction().isRightClick() && event.getItem() != null && event.getItem().getType() == Material.COMPASS) {
             event.setCancelled(true);
 
+            if(playerPingList.contains(event.getPlayer().getUniqueId())) {
+                event.getPlayer().sendActionBar(Component.text("§cEspere alguns segundos antes de pingar novamente."));
+                event.getPlayer().playSound(event.getPlayer().getLocation(), Sound.BLOCK_NOTE_BLOCK_SNARE, 0.5F, 0.5F);
+                return;
+            }
+
             Object target = getTarget(event.getPlayer(), 50);
+            playerPingList.add(event.getPlayer().getUniqueId());
+            Bukkit.getScheduler().scheduleSyncDelayedTask(this, () -> playerPingList.remove(event.getPlayer().getUniqueId()),20L);
 
             if (target instanceof Entity) {
                 handlePing(target, PingType.ENTITY, ((LivingEntity) target).getEyeLocation(),event.getPlayer());
             } else if (target instanceof org.bukkit.block.Block) {
                 handlePing(target, PingType.BLOCK, ((Block) target).getLocation(),event.getPlayer());
             } else {
-                event.getPlayer().sendMessage(pref+" §cNenhum bloco ou entidade encontrado num raio de 50 blocos.");
+                event.getPlayer().sendActionBar(Component.text("§cNenhum bloco ou entidade encontrado num raio de 50 blocos."));
                 event.getPlayer().playSound(event.getPlayer().getLocation(),Sound.BLOCK_NOTE_BLOCK_SNARE,0.5F,0.5F);
             }
         }
@@ -70,6 +80,7 @@ public final class SuperPing extends JavaPlugin implements Listener {
 
     private void handlePing(Object ping, PingType t, Location l, Player p) {
         if(pingList.contains(ping)) {
+            p.sendActionBar(Component.text("§cEsta localização já foi pingada recentemente."));
             p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_SNARE, 0.5F, 0.5F);
             return;
         }
