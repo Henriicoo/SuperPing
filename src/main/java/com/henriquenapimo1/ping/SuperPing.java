@@ -2,6 +2,7 @@ package com.henriquenapimo1.ping;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.entity.*;
@@ -108,9 +109,24 @@ public final class SuperPing extends JavaPlugin implements Listener {
             covered += 0.2;
         }
 
+        TextDisplay target = l.getWorld().spawn(l, TextDisplay.class);
+        target.setBillboard(Display.Billboard.CENTER);
+        target.setBackgroundColor(Color.AQUA);
+        target.setBrightness(new Display.Brightness(8,15));
+
+        TextDisplay player = l.getWorld().spawn(l, TextDisplay.class);
+        player.setBillboard(Display.Billboard.CENTER);
+        player.setBrightness(new Display.Brightness(5,8));
+        player.text(Component.empty().append(Component.text("§o⚑ "+p.getName()).color(TextColor.color(224,224,224))));
+
+        TextDisplay dist = l.getWorld().spawn(l,TextDisplay.class);
+        dist.setBillboard(Display.Billboard.CENTER);
+        dist.setBrightness(new Display.Brightness(8,15));
+
         // CASOS ESPECÍFICOS
         if(t == PingType.ENTITY) {
             LivingEntity e = (LivingEntity) ping;
+            target.text(Component.empty().append(Component.translatable(e.getType().translationKey()).color(TextColor.color(NamedTextColor.DARK_GRAY))));
 
             e.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING,5*20,1,false,false));
             team.addEntity(e);
@@ -120,13 +136,29 @@ public final class SuperPing extends JavaPlugin implements Listener {
                 int counter = 0;
                 @Override
                 public void run() {
-                    l.getWorld().getPlayersSeeingChunk(l.getChunk()).forEach(p -> drawArrow(e.getEyeLocation(),p));
+                    double distText = p.getLocation().distance(e.getLocation());
+                    dist.text(Component.text((int) distText+" m"));
+
+                    l.getWorld().getPlayersSeeingChunk(l.getChunk()).forEach(p -> drawArrow(e.getEyeLocation().clone().add(0,1,0),p));
+                    dist.teleport(e.getEyeLocation().clone().add(0,1.20,0));
+                    target.teleport(e.getEyeLocation().clone().add(0,0.95,0));
+                    player.teleport(e.getEyeLocation().clone().add(0,0.60,0));
+
+                    p.sendActionBar(Component.empty().append(
+                            Component.text("§bAlvo: ")
+                                    .append(Component.translatable(e.getType().translationKey()).color(TextColor.color(NamedTextColor.AQUA))
+                                            .append(Component.text(" | Distância: "+((int) distText)+" m")))));
+
                     counter += 1;
                     if(counter >= 100) {
                         Bukkit.getScheduler().cancelTask(taskId[0]);
                         e.removePotionEffect(PotionEffectType.GLOWING);
                         team.removeEntity(e);
                         pingList.remove(ping);
+                        target.remove();
+                        player.remove();
+                        dist.remove();
+                        p.sendActionBar(Component.empty());
                     }
                 }
             },0L,1L);
@@ -141,10 +173,38 @@ public final class SuperPing extends JavaPlugin implements Listener {
             e.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING,5*20,1,false,false));
             team.addEntity(e);
 
-            Bukkit.getScheduler().scheduleSyncDelayedTask(this, () -> {
-                e.remove();
-                pingList.remove(ping);
-            },100L);
+            target.text(Component.empty().append(Component.translatable(b.getType().translationKey()).color(TextColor.color(NamedTextColor.DARK_GRAY))));
+
+            dist.teleport(e.getEyeLocation().clone().add(0,1.20,0));
+            target.teleport(e.getEyeLocation().clone().add(0,0.95,0));
+            player.teleport(e.getEyeLocation().clone().add(0,0.60,0));
+
+            int[] taskId = new int[1];
+            taskId[0] = Bukkit.getScheduler().scheduleSyncRepeatingTask(this, new Runnable() {
+                int counter = 0;
+                @Override
+                public void run() {
+                    double distText = p.getLocation().distance(b.getLocation());
+                    dist.text(Component.text((int) distText+" m"));
+
+                    p.sendActionBar(Component.empty().append(
+                            Component.text("§bAlvo: ")
+                                    .append(Component.translatable(b.getType().translationKey()).color(TextColor.color(NamedTextColor.AQUA))
+                                            .append(Component.text(" | Distância: "+((int) distText)+" m")))));
+
+                    counter += 1;
+                    if(counter >= 100) {
+                        e.remove();
+                        pingList.remove(ping);
+                        target.remove();
+                        player.remove();
+                        dist.remove();
+
+                        Bukkit.getScheduler().cancelTask(taskId[0]);
+                        p.sendActionBar(Component.empty());
+                    }
+                }
+            },0L,1L);
         }
     }
 
