@@ -173,7 +173,7 @@ public final class SuperPing extends JavaPlugin implements Listener {
                                             .append(Component.text(" | Distância: "+((int) distText)+" m (X: "+((int) e.getX())+", Y: "+((int) e.getY())+", Z: "+((int) e.getZ())+")")))));
 
                     counter += 1;
-                    if(counter >= 100) {
+                    if(counter >= 100 || e.isDead()) {
                         Bukkit.getScheduler().cancelTask(taskId[0]);
                         e.removePotionEffect(PotionEffectType.GLOWING);
                         team.removeEntity(e);
@@ -232,7 +232,7 @@ public final class SuperPing extends JavaPlugin implements Listener {
                                             .append(Component.text(" | Distância: "+((int) distText)+" m (X: "+b.getX()+", Y: "+b.getY()+", Z: "+b.getZ()+")")))));
 
                     counter += 1;
-                    if(counter >= 100) {
+                    if(counter >= 100 || b.isEmpty()) {
                         e.remove();
                         pingList.remove(ping);
                         target.remove();
