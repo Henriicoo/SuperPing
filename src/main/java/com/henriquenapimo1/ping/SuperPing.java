@@ -119,8 +119,8 @@ public final class SuperPing extends JavaPlugin implements Listener {
         pingList.add(ping);
 
         // SOM
-        l.getWorld().playSound(l, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, SoundCategory.MASTER, 1F, 1F);
-        p.playSound(p.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, SoundCategory.MASTER, 0.5F, 0.5F);
+        l.getWorld().playSound(l, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, SoundCategory.MASTER, 1.5F, 1.5F);
+        p.playSound(p.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, SoundCategory.MASTER, 1F, 1F);
 
         // PARTÍCULAS TRAIL
         double distance = p.getLocation().distance(l);
@@ -144,15 +144,18 @@ public final class SuperPing extends JavaPlugin implements Listener {
         target.setBillboard(Display.Billboard.CENTER);
         target.setBackgroundColor(Color.AQUA);
         target.setBrightness(new Display.Brightness(8,15));
+        target.setSeeThrough(true);
 
         TextDisplay player = l.getWorld().spawn(l, TextDisplay.class);
         player.setBillboard(Display.Billboard.CENTER);
         player.setBrightness(new Display.Brightness(5,8));
         player.text(Component.empty().append(Component.text("§o⚑ "+p.getName()).color(TextColor.color(224,224,224))));
+        player.setSeeThrough(true);
 
         TextDisplay dist = l.getWorld().spawn(l,TextDisplay.class);
         dist.setBillboard(Display.Billboard.CENTER);
         dist.setBrightness(new Display.Brightness(8,15));
+        dist.setSeeThrough(true);
 
         // CASOS ESPECÍFICOS
         if(t == PingType.ENTITY) {
@@ -373,7 +376,7 @@ public final class SuperPing extends JavaPlugin implements Listener {
                     v = rotateAroundAxisY(v, fire);
 
                     location.add(v);
-                    location.getWorld().spawnParticle(Particle.DUST, location.getX(), location.getY(), location.getZ(), 1, dust);
+                    p.spawnParticle(Particle.DUST, location.getX(), location.getY(), location.getZ(), 1, dust);
                     location.subtract(v);
                 }
                 x += space;
