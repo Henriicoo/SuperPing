@@ -73,8 +73,8 @@ public final class SuperPing extends JavaPlugin implements Listener {
             return;
         }
 
-        Object target = getTarget(p, 50);
-        playerPingList.add(p.getUniqueId());
+        Object target = getTarget(p, 150);
+
         Bukkit.getScheduler().scheduleSyncDelayedTask(this, () -> playerPingList.remove(p.getUniqueId()),20L);
 
         if (target instanceof Entity) {
@@ -82,7 +82,7 @@ public final class SuperPing extends JavaPlugin implements Listener {
         } else if (target instanceof org.bukkit.block.Block) {
             handlePing(target, PingType.BLOCK, ((Block) target).getLocation(),p);
         } else {
-            p.sendActionBar(Component.text("§cNenhum bloco ou entidade encontrado num raio de 50 blocos."));
+            p.sendActionBar(Component.text("§cNenhum bloco ou entidade encontrado num raio de 150 blocos."));
             p.playSound(p.getLocation(),Sound.BLOCK_NOTE_BLOCK_SNARE,0.5F,0.5F);
         }
     }
@@ -98,6 +98,7 @@ public final class SuperPing extends JavaPlugin implements Listener {
             return;
         }
 
+        playerPingList.add(p.getUniqueId());
         pingList.add(ping);
 
         // SOM
@@ -154,7 +155,7 @@ public final class SuperPing extends JavaPlugin implements Listener {
                 @Override
                 public void run() {
                     double distText = p.getLocation().distance(e.getLocation());
-                    dist.text(Component.text(distText+" m"));
+                    dist.text(Component.text((int) distText+" m"));
 
                     l.getWorld().getPlayersSeeingChunk(l.getChunk()).forEach(p -> drawArrow(e.getEyeLocation().clone().add(0,1,0),p));
                     dist.teleport(e.getEyeLocation().clone().add(0,1.20,0));
