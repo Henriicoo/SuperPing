@@ -101,6 +101,9 @@ public final class SuperPing extends JavaPlugin implements Listener {
         playerPingList.add(p.getUniqueId());
         pingList.add(ping);
 
+        Location oldCompass = p.getCompassTarget();
+        p.setCompassTarget(l);
+
         // SOM
         l.getWorld().playSound(l, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, SoundCategory.MASTER, 1.5F, 1.5F);
         p.playSound(p.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, SoundCategory.MASTER, 1F, 1F);
@@ -162,6 +165,8 @@ public final class SuperPing extends JavaPlugin implements Listener {
                     target.teleport(e.getEyeLocation().clone().add(0,0.95,0));
                     player.teleport(e.getEyeLocation().clone().add(0,0.60,0));
 
+                    p.setCompassTarget(e.getLocation());
+
                     p.sendActionBar(Component.empty().append(
                             Component.text("§bAlvo: ")
                                     .append(Component.translatable(e.getType().translationKey()).color(TextColor.color(NamedTextColor.AQUA))
@@ -177,6 +182,7 @@ public final class SuperPing extends JavaPlugin implements Listener {
                         player.remove();
                         dist.remove();
                         p.sendActionBar(Component.empty());
+                        p.setCompassTarget(oldCompass);
                     }
                 }
             },0L,1L);
@@ -235,6 +241,7 @@ public final class SuperPing extends JavaPlugin implements Listener {
 
                         Bukkit.getScheduler().cancelTask(taskId[0]);
                         p.sendActionBar(Component.empty());
+                        p.setCompassTarget(oldCompass);
                     }
                 }
             },0L,1L);
