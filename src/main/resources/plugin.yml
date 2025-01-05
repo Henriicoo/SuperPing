@@ -2,3 +2,5 @@ name: SuperPing
 version: '1.0-SNAPSHOT'
 main: com.henriquenapimo1.ping.SuperPing
 api-version: '1.21'
+depend: [ProtocolLib]
+

@@ -1,5 +1,11 @@
 package com.henriquenapimo1.ping;
 
+import com.comphenix.protocol.PacketType;
+import com.comphenix.protocol.ProtocolLibrary;
+import com.comphenix.protocol.ProtocolManager;
+import com.comphenix.protocol.events.PacketContainer;
+import com.comphenix.protocol.wrappers.WrappedChatComponent;
+import com.comphenix.protocol.wrappers.WrappedDataWatcher;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
@@ -20,16 +26,28 @@ import org.bukkit.util.Vector;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.logging.Logger;
 
 public final class SuperPing extends JavaPlugin implements Listener {
 
     private static Team team;
     private final List<Object> pingList = new ArrayList<>();
     private final List<UUID> playerPingList = new ArrayList<>();
+    private ProtocolManager protocolManager;
 
     @Override
     public void onEnable() {
+
+        if (getServer().getPluginManager().getPlugin("ProtocolLib") == null) {
+            Logger.getLogger("Minecraft").severe("[SuperPing] - O plugin ProtocolLib não foi encontrado. Este plugin será desabilitado");
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
+
+        protocolManager = ProtocolLibrary.getProtocolManager();
+
         getServer().getPluginManager().registerEvents(this, this);
 
         Scoreboard board = Bukkit.getScoreboardManager().getMainScoreboard();
@@ -150,9 +168,13 @@ public final class SuperPing extends JavaPlugin implements Listener {
                 @Override
                 public void run() {
                     double distText = p.getLocation().distance(e.getLocation());
-                    dist.text(Component.text((int) distText+" m"));
+                    //dist.text(Component.text(distText+" m"));
 
-                    l.getWorld().getPlayersSeeingChunk(l.getChunk()).forEach(p -> drawArrow(e.getEyeLocation().clone().add(0,1,0),p));
+                    l.getWorld().getPlayersSeeingChunk(l.getChunk()).forEach(p -> {
+                        setDistanceText(p,e.getLocation(),dist);
+                        drawArrow(e.getEyeLocation().clone().add(0,1,0),p);
+                    });
+
                     dist.teleport(e.getEyeLocation().clone().add(0,1.20,0));
                     target.teleport(e.getEyeLocation().clone().add(0,0.95,0));
                     player.teleport(e.getEyeLocation().clone().add(0,0.60,0));
@@ -213,7 +235,8 @@ public final class SuperPing extends JavaPlugin implements Listener {
                 @Override
                 public void run() {
                     double distText = p.getLocation().distance(b.getLocation());
-                    dist.text(Component.text((int) distText+" m"));
+                    //dist.text(Component.text(distText+" m"));
+                    l.getWorld().getPlayersSeeingChunk(l.getChunk()).forEach(p -> setDistanceText(p,b.getLocation(),dist));
 
                     p.sendActionBar(Component.empty().append(
                             Component.text("§bAlvo: ")
@@ -235,6 +258,78 @@ public final class SuperPing extends JavaPlugin implements Listener {
             },0L,1L);
         }
     }
+
+    private void setDistanceText(Player p, Location l, TextDisplay display) {
+        int dist = (int) p.getLocation().distance(l);
+        String distText = String.format("%d m", dist);
+        PacketContainer packet = protocolManager.createPacket(PacketType.Play.Server.ENTITY_METADATA);
+
+        packet.getIntegers().write(0, display.getEntityId());
+
+        WrappedDataWatcher dataWatcher = new WrappedDataWatcher();
+
+        WrappedDataWatcher.WrappedDataWatcherObject textObject = new WrappedDataWatcher.WrappedDataWatcherObject(23, WrappedDataWatcher.Registry.getChatComponentSerializer(true));
+
+        // Convertendo o texto simples para o formato ChatComponent
+        dataWatcher.setObject(textObject, Optional.of(WrappedChatComponent.fromText(distText).getHandle()));
+
+        // Modificando o pacote para incluir o texto
+        packet.getWatchableCollectionModifier().write(0, dataWatcher.getWatchableObjects());
+        try {
+            protocolManager.sendServerPacket(p, packet);
+        } catch (Exception ignored) {}
+    }
+
+    /*private void setDistanceText(Player p, Location l, TextDisplay display) {
+        // Criação do Armor Stand
+        int entityId = 123; // ID único para a entidade
+
+        PacketContainer spawnPacket = protocolManager.createPacket(PacketType.Play.Server.SPAWN_ENTITY);
+        spawnPacket.getIntegers().write(0, entityId); // ID da entidade
+        spawnPacket.getUUIDs().write(0, UUID.randomUUID()); // UUID único
+        spawnPacket.getDoubles()
+                .write(0, l.getX())
+                .write(1, l.getY())
+                .write(2, l.getZ());
+        spawnPacket.getEntityTypeModifier().write(0, EntityType.ARMOR_STAND); // Tipo de entidade
+
+        try {
+            protocolManager.sendServerPacket(p, spawnPacket);
+        } catch (InvocationTargetException e) {
+            throw new RuntimeException(e);
+        }
+
+        int dist = (int) p.getLocation().distance(l);
+        String distText = String.format("%d m", dist);
+
+        PacketContainer metadataPacket = protocolManager.createPacket(PacketType.Play.Server.ENTITY_METADATA);
+        metadataPacket.getIntegers().write(0, entityId);
+
+        WrappedDataWatcher dataWatcher = new WrappedDataWatcher();
+
+        WrappedDataWatcher.WrappedDataWatcherObject nameObject =
+                new WrappedDataWatcher.WrappedDataWatcherObject(2, WrappedDataWatcher.Registry.getChatComponentSerializer(true));
+        dataWatcher.setObject(nameObject, Optional.of(WrappedChatComponent.fromText(distText).getHandle()));
+
+        WrappedDataWatcher.WrappedDataWatcherObject showNameObject =
+                new WrappedDataWatcher.WrappedDataWatcherObject(3, WrappedDataWatcher.Registry.get(Boolean.class));
+        dataWatcher.setObject(showNameObject, true);
+
+        WrappedDataWatcher.WrappedDataWatcherObject invisibleObject =
+                new WrappedDataWatcher.WrappedDataWatcherObject(0, WrappedDataWatcher.Registry.get(Byte.class));
+        dataWatcher.setObject(invisibleObject, (byte) 0x20);
+
+        WrappedDataWatcher.WrappedDataWatcherObject noGravityObject =
+                new WrappedDataWatcher.WrappedDataWatcherObject(5, WrappedDataWatcher.Registry.get(Boolean.class));
+        dataWatcher.setObject(noGravityObject, true);
+
+        metadataPacket.getWatchableCollectionModifier().write(0, dataWatcher.getWatchableObjects());
+        try {
+            protocolManager.sendServerPacket(p, metadataPacket);
+        } catch (InvocationTargetException e) {
+            throw new RuntimeException(e);
+        }
+    }*/
 
     public static Object getTarget(Player player, int range) {
         Location eyeLocation = player.getEyeLocation();
