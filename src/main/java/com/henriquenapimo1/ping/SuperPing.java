@@ -14,8 +14,6 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import org.bukkit.scoreboard.Criteria;
-import org.bukkit.scoreboard.Objective;
 import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
 import org.bukkit.util.Vector;
@@ -27,7 +25,6 @@ import java.util.UUID;
 public final class SuperPing extends JavaPlugin implements Listener {
 
     private static Team team;
-    private static Scoreboard board;
     private final List<Object> pingList = new ArrayList<>();
     private final List<UUID> playerPingList = new ArrayList<>();
 
@@ -35,7 +32,7 @@ public final class SuperPing extends JavaPlugin implements Listener {
     public void onEnable() {
         getServer().getPluginManager().registerEvents(this, this);
 
-        board = Bukkit.getScoreboardManager().getMainScoreboard();
+        Scoreboard board = Bukkit.getScoreboardManager().getMainScoreboard();
         if (board.getTeam("pingColorBlue") == null) {
             team = board.registerNewTeam("pingColorBlue");
         } else {
@@ -152,15 +149,12 @@ public final class SuperPing extends JavaPlugin implements Listener {
 
             int[] taskId = new int[1];
 
-            Objective obj = board.registerNewObjective("dist-"+e.getUniqueId(), Criteria.DUMMY,Component.text("dist-"+e.getUniqueId()));
-            dist.text(Component.score("*","dist-"+e.getUniqueId()));
-
             taskId[0] = Bukkit.getScheduler().scheduleSyncRepeatingTask(this, new Runnable() {
                 int counter = 0;
                 @Override
                 public void run() {
                     double distText = p.getLocation().distance(e.getLocation());
-                    customDistance(p,e.getLocation(),obj);
+                    dist.text(Component.text(distText+" m"));
 
                     l.getWorld().getPlayersSeeingChunk(l.getChunk()).forEach(p -> drawArrow(e.getEyeLocation().clone().add(0,1,0),p));
                     dist.teleport(e.getEyeLocation().clone().add(0,1.20,0));
@@ -182,7 +176,6 @@ public final class SuperPing extends JavaPlugin implements Listener {
                         player.remove();
                         dist.remove();
                         p.sendActionBar(Component.empty());
-                        obj.unregister();
                     }
                 }
             },0L,1L);
@@ -245,11 +238,6 @@ public final class SuperPing extends JavaPlugin implements Listener {
                 }
             },0L,1L);
         }
-    }
-
-    private void customDistance(Player p, Location l, Objective obj) {
-        double distText = p.getLocation().distance(l);
-        obj.getScore(p).setScore((int) distText);
     }
 
     public static Object getTarget(Player player, int range) {
