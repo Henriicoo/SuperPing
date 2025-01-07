@@ -10,6 +10,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -25,6 +26,7 @@ public final class SuperPing extends JavaPlugin implements Listener {
     private static Map<Integer,Team> teams;
     private final List<Object> pingList = new ArrayList<>();
     private final List<UUID> playerPingList = new ArrayList<>();
+    private final Map<UUID, Object> pingWaitList = new HashMap<>();
 
     @Override
     public void onEnable() {
@@ -48,7 +50,7 @@ public final class SuperPing extends JavaPlugin implements Listener {
         }
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerInteract(PlayerInteractEvent event) {
         if(event.getItem() == null || event.getItem().getType() != Material.COMPASS)
             return;
@@ -62,11 +64,12 @@ public final class SuperPing extends JavaPlugin implements Listener {
             if(hasDelay(event.getPlayer()))
                 return;
 
+            pingWaitList.put(event.getPlayer().getUniqueId(),getTarget(event.getPlayer(),150));
             event.getPlayer().openInventory(PingMenu.getPingMenu());
         }
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.LOW)
     public void onMenuInteract(InventoryClickEvent event) {
         if(!event.getView().title().equals(Component.text("Selecione o tipo de ping")) || !(event.getWhoClicked() instanceof Player))
             return;
@@ -78,6 +81,14 @@ public final class SuperPing extends JavaPlugin implements Listener {
 
         handlePingEvent((Player) event.getWhoClicked(), PingMenu.PingType.getByValue(event.getRawSlot()-2));
         event.getWhoClicked().closeInventory();
+    }
+
+    @EventHandler(priority = EventPriority.LOW)
+    public void onCloseInv(InventoryCloseEvent event) {
+        if(!event.getView().title().equals(Component.text("Selecione o tipo de ping")) || !(event.getPlayer() instanceof Player))
+            return;
+
+        Bukkit.getScheduler().scheduleSyncDelayedTask(this, () -> pingWaitList.remove(event.getPlayer().getUniqueId()),20L);
     }
 
     private boolean hasDelay(Player p) {
@@ -93,7 +104,13 @@ public final class SuperPing extends JavaPlugin implements Listener {
         if(hasDelay(p))
             return;
 
-        Object target = getTarget(p, 150);
+        Object target;
+
+        if(pingWaitList.containsKey(p.getUniqueId())) {
+            target = pingWaitList.get(p.getUniqueId());
+            pingWaitList.remove(p.getUniqueId());
+        } else
+            target = getTarget(p, 150);
 
         Bukkit.getScheduler().scheduleSyncDelayedTask(this, () -> playerPingList.remove(p.getUniqueId()),20L);
 
