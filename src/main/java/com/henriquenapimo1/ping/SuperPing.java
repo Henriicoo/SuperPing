@@ -43,7 +43,7 @@ public final class SuperPing extends JavaPlugin implements Listener {
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
-    public void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
+    public void onPlayerInteracEntity(PlayerInteractEntityEvent event) {
         if(event.getPlayer().getInventory().getItemInMainHand().getType() != Material.AIR &&  event.getPlayer().getInventory().getItemInMainHand().getType() == Material.COMPASS) {
             event.setCancelled(true);
             handlePingEvent(event.getPlayer(), PingMenu.PingType.PADRAO);
@@ -61,7 +61,7 @@ public final class SuperPing extends JavaPlugin implements Listener {
             handlePingEvent(event.getPlayer(), PingMenu.PingType.PADRAO);
 
         if(event.getAction().isLeftClick()) {
-            if(hasCooldown(event.getPlayer()))
+            if(hasDelay(event.getPlayer()))
                 return;
 
             pingWaitList.put(event.getPlayer().getUniqueId(),getTarget(event.getPlayer(),150));
@@ -91,7 +91,7 @@ public final class SuperPing extends JavaPlugin implements Listener {
         Bukkit.getScheduler().scheduleSyncDelayedTask(this, () -> pingWaitList.remove(event.getPlayer().getUniqueId()),20L);
     }
 
-    private boolean hasCooldown(Player p) {
+    private boolean hasDelay(Player p) {
         if(playerPingList.contains(p.getUniqueId())) {
             p.sendActionBar(Component.text("§cEspere alguns segundos antes de pingar novamente."));
             p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_SNARE, 0.5F, 0.5F);
@@ -101,7 +101,7 @@ public final class SuperPing extends JavaPlugin implements Listener {
     }
 
     private void handlePingEvent(Player p, PingMenu.PingType type) {
-        if(hasCooldown(p))
+        if(hasDelay(p))
             return;
 
         Object target;
@@ -116,7 +116,7 @@ public final class SuperPing extends JavaPlugin implements Listener {
 
         if (target instanceof Entity) {
             handlePing(target, PingTarget.ENTITY, ((LivingEntity) target).getEyeLocation(),p, type);
-        } else if (target instanceof Block) {
+        } else if (target instanceof org.bukkit.block.Block) {
             handlePing(target, PingTarget.BLOCK, ((Block) target).getLocation(),p, type);
         } else {
             p.sendActionBar(Component.text("§cNenhum bloco ou entidade encontrado num raio de 150 blocos."));
@@ -178,8 +178,6 @@ public final class SuperPing extends JavaPlugin implements Listener {
         dist.setBrightness(new Display.Brightness(8,15));
         dist.setSeeThrough(true);
 
-        List<Boolean> isEmpty = new ArrayList<>();
-
         // CASOS ESPECÍFICOS
         if(t == PingTarget.ENTITY) {
             LivingEntity e = (LivingEntity) ping;
@@ -187,12 +185,6 @@ public final class SuperPing extends JavaPlugin implements Listener {
 
             e.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING,5*20,1,false,false));
             teams.get(type.getValue()).addEntity(e);
-
-            for(int i = 1; i <= 3; i++) {
-                isEmpty.add(e.getWorld().getBlockAt(e.getEyeLocation().getBlockX(),e.getEyeLocation().getBlockY()+i, e.getEyeLocation().getBlockZ()).isEmpty());
-                System.out.println(e.getEyeLocation().getBlockX() + " | " + e.getEyeLocation().getBlockX()+1 + " | " + e.getEyeLocation().getBlockX());
-            }
-            System.out.println(isEmpty);
 
             int[] taskId = new int[1];
 
@@ -203,9 +195,7 @@ public final class SuperPing extends JavaPlugin implements Listener {
                     double distText = p.getLocation().distance(e.getLocation());
                     dist.text(Component.text((int) distText+" m"));
 
-                    if(!isEmpty.contains(false)) {
-                        l.getWorld().getPlayersSeeingChunk(l.getChunk()).forEach(p -> drawShape(e.getEyeLocation().clone().add(0, 1, 0), p, type));
-                    }
+                    l.getWorld().getPlayersSeeingChunk(l.getChunk()).forEach(p -> drawShape(e.getEyeLocation().clone().add(0,1,0),p,type));
                     dist.teleport(e.getEyeLocation().clone().add(0,1.20,0));
                     target.teleport(e.getEyeLocation().clone().add(0,0.95,0));
                     player.teleport(e.getEyeLocation().clone().add(0,0.60,0));
@@ -263,10 +253,6 @@ public final class SuperPing extends JavaPlugin implements Listener {
             target.teleport(e.getLocation().clone().add(eLoc,0.95+0.5+yLoc,eLoc));
             player.teleport(e.getLocation().clone().add(eLoc,0.60+0.5+yLoc,eLoc));
 
-            for(int i = 1; i <= 3; i++) {
-                isEmpty.add(b.getWorld().getBlockAt(b.getX(),b.getY()+i,b.getZ()).isEmpty());
-            }
-
             int[] taskId = new int[1];
             taskId[0] = Bukkit.getScheduler().scheduleSyncRepeatingTask(this, new Runnable() {
                 int counter = 0;
@@ -274,9 +260,6 @@ public final class SuperPing extends JavaPlugin implements Listener {
                 public void run() {
                     double distText = p.getLocation().distance(b.getLocation());
                     dist.text(Component.text((int) distText+" m"));
-
-                    if(!isEmpty.contains(false))
-                        l.getWorld().getPlayersSeeingChunk(l.getChunk()).forEach(p -> drawShape(e.getLocation().clone().add(0,2,0),p,type));
 
                     p.sendActionBar(Component.empty().color(TextColor.color(PingMenu.getChatColor(type.getValue()))).append(
                             Component.text("Alvo: ")
