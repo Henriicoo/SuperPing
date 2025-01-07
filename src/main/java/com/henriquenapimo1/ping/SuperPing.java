@@ -9,89 +9,107 @@ import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
 import org.bukkit.util.Vector;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 public final class SuperPing extends JavaPlugin implements Listener {
 
-    private static Team team;
+    private static Map<Integer,Team> teams;
     private final List<Object> pingList = new ArrayList<>();
     private final List<UUID> playerPingList = new ArrayList<>();
 
     @Override
     public void onEnable() {
         getServer().getPluginManager().registerEvents(this, this);
-
-        Scoreboard board = Bukkit.getScoreboardManager().getMainScoreboard();
-        if (board.getTeam("pingColorBlue") == null) {
-            team = board.registerNewTeam("pingColorBlue");
-        } else {
-            team = board.getTeam("pingColorBlue");
-        }
-
-        if (team != null) {
-            team.color(NamedTextColor.AQUA);
-        }
+        teams = new PingMenu().getColorTeams(Bukkit.getScoreboardManager().getMainScoreboard());
     }
 
     @Override
     public void onDisable() {
-        if(team != null)
-            team.unregister();
+        teams.forEach((integer, team) -> {
+            if(team != null)
+                team.unregister();
+        });
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerInteracEntity(PlayerInteractEntityEvent event) {
         if(event.getPlayer().getInventory().getItemInMainHand().getType() != Material.AIR &&  event.getPlayer().getInventory().getItemInMainHand().getType() == Material.COMPASS) {
             event.setCancelled(true);
-            handlePingEvent(event.getPlayer());
+            handlePingEvent(event.getPlayer(), PingMenu.PingType.PADRAO);
         }
     }
 
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
-        if(event.getAction().isRightClick() && event.getItem() != null && event.getItem().getType() == Material.COMPASS) {
-            event.setCancelled(true);
-            handlePingEvent(event.getPlayer());
+        if(event.getItem() == null || event.getItem().getType() != Material.COMPASS)
+            return;
+
+        event.setCancelled(true);
+
+        if(event.getAction().isRightClick())
+            handlePingEvent(event.getPlayer(), PingMenu.PingType.PADRAO);
+
+        if(event.getAction().isLeftClick()) {
+            if(hasDelay(event.getPlayer()))
+                return;
+
+            event.getPlayer().openInventory(PingMenu.getPingMenu());
         }
     }
 
-    private void handlePingEvent(Player p) {
+    @EventHandler
+    public void onMenuInteract(InventoryClickEvent event) {
+        if(!event.getView().title().equals(Component.text("Selecione o tipo de ping")) || !(event.getWhoClicked() instanceof Player))
+            return;
+
+        event.setCancelled(true);
+
+        if(Arrays.asList(0,1,7,0).contains(event.getRawSlot()))
+            return;
+
+        handlePingEvent((Player) event.getWhoClicked(), PingMenu.PingType.getByValue(event.getRawSlot()-2));
+        event.getWhoClicked().closeInventory();
+    }
+
+    private boolean hasDelay(Player p) {
         if(playerPingList.contains(p.getUniqueId())) {
             p.sendActionBar(Component.text("§cEspere alguns segundos antes de pingar novamente."));
             p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_SNARE, 0.5F, 0.5F);
-            return;
+            return true;
         }
+        return false;
+    }
+
+    private void handlePingEvent(Player p, PingMenu.PingType type) {
+        if(hasDelay(p))
+            return;
 
         Object target = getTarget(p, 150);
 
         Bukkit.getScheduler().scheduleSyncDelayedTask(this, () -> playerPingList.remove(p.getUniqueId()),20L);
 
         if (target instanceof Entity) {
-            handlePing(target, PingType.ENTITY, ((LivingEntity) target).getEyeLocation(),p);
+            handlePing(target, PingTarget.ENTITY, ((LivingEntity) target).getEyeLocation(),p, type);
         } else if (target instanceof org.bukkit.block.Block) {
-            handlePing(target, PingType.BLOCK, ((Block) target).getLocation(),p);
+            handlePing(target, PingTarget.BLOCK, ((Block) target).getLocation(),p, type);
         } else {
             p.sendActionBar(Component.text("§cNenhum bloco ou entidade encontrado num raio de 150 blocos."));
             p.playSound(p.getLocation(),Sound.BLOCK_NOTE_BLOCK_SNARE,0.5F,0.5F);
         }
     }
 
-    private enum PingType { ENTITY, BLOCK }
+    private enum PingTarget { ENTITY, BLOCK }
 
-    final Particle.DustOptions dust = new Particle.DustOptions(Color.fromRGB(85, 255, 255), 1);
-
-    private void handlePing(Object ping, PingType t, Location l, Player p) {
+    private void handlePing(Object ping, PingTarget t, Location l, Player p, PingMenu.PingType type) {
         if(pingList.contains(ping)) {
             p.sendActionBar(Component.text("§cEsta localização já foi pingada recentemente."));
             p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_SNARE, 0.5F, 0.5F);
@@ -114,7 +132,7 @@ public final class SuperPing extends JavaPlugin implements Listener {
         Vector p1 = p.getLocation().add(0,1,0).toVector();
         Vector p2 = l.toVector();
 
-        if(t==PingType.BLOCK)
+        if(t== PingTarget.BLOCK)
             p2 = l.clone().add(0.5, 0.5, 0.5).toVector();
 
         Vector vector = p2.clone().subtract(p1).normalize().multiply(0.2);
@@ -122,13 +140,13 @@ public final class SuperPing extends JavaPlugin implements Listener {
         double covered = 0;
 
         for (; covered < distance; p1.add(vector)) {
-            l.getWorld().spawnParticle(Particle.DUST, p1.getX(), p1.getY(), p1.getZ(), 1, dust);
+            l.getWorld().spawnParticle(Particle.DUST, p1.getX(), p1.getY(), p1.getZ(), 1, PingMenu.getParticleColor(type.getValue()));
             covered += 0.2;
         }
 
         TextDisplay target = l.getWorld().spawn(l, TextDisplay.class);
         target.setBillboard(Display.Billboard.CENTER);
-        target.setBackgroundColor(Color.AQUA);
+        target.setBackgroundColor(Color.fromRGB(PingMenu.getChatColor(type.getValue()).value()));
         target.setBrightness(new Display.Brightness(8,15));
         target.setSeeThrough(true);
 
@@ -144,12 +162,12 @@ public final class SuperPing extends JavaPlugin implements Listener {
         dist.setSeeThrough(true);
 
         // CASOS ESPECÍFICOS
-        if(t == PingType.ENTITY) {
+        if(t == PingTarget.ENTITY) {
             LivingEntity e = (LivingEntity) ping;
             target.text(Component.empty().append(Component.translatable(e.getType().translationKey()).color(TextColor.color(NamedTextColor.DARK_GRAY))));
 
             e.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING,5*20,1,false,false));
-            team.addEntity(e);
+            teams.get(type.getValue()).addEntity(e);
 
             int[] taskId = new int[1];
 
@@ -160,23 +178,23 @@ public final class SuperPing extends JavaPlugin implements Listener {
                     double distText = p.getLocation().distance(e.getLocation());
                     dist.text(Component.text((int) distText+" m"));
 
-                    l.getWorld().getPlayersSeeingChunk(l.getChunk()).forEach(p -> drawArrow(e.getEyeLocation().clone().add(0,1,0),p));
+                    l.getWorld().getPlayersSeeingChunk(l.getChunk()).forEach(p -> drawShape(e.getEyeLocation().clone().add(0,1,0),p,type));
                     dist.teleport(e.getEyeLocation().clone().add(0,1.20,0));
                     target.teleport(e.getEyeLocation().clone().add(0,0.95,0));
                     player.teleport(e.getEyeLocation().clone().add(0,0.60,0));
 
                     p.setCompassTarget(e.getLocation());
 
-                    p.sendActionBar(Component.empty().append(
-                            Component.text("§bAlvo: ")
-                                    .append(Component.translatable(e.getType().translationKey()).color(TextColor.color(NamedTextColor.AQUA))
+                    p.sendActionBar(Component.empty().color(TextColor.color(PingMenu.getChatColor(type.getValue()))).append(
+                            Component.text("Alvo: ")
+                                    .append(Component.translatable(e.getType().translationKey())
                                             .append(Component.text(" | Distância: "+((int) distText)+" m (X: "+((int) e.getX())+", Y: "+((int) e.getY())+", Z: "+((int) e.getZ())+")")))));
 
                     counter += 1;
                     if(counter >= 100 || e.isDead()) {
                         Bukkit.getScheduler().cancelTask(taskId[0]);
                         e.removePotionEffect(PotionEffectType.GLOWING);
-                        team.removeEntity(e);
+                        teams.get(type.getValue()).removeEntity(e);
                         pingList.remove(ping);
                         target.remove();
                         player.remove();
@@ -210,7 +228,7 @@ public final class SuperPing extends JavaPlugin implements Listener {
 
             e.setGlowing(true);
             e.setInvisible(true);
-            team.addEntity(e);
+            teams.get(type.getValue()).addEntity(e);
 
             target.text(Component.empty().append(Component.translatable(b.getType().translationKey()).color(TextColor.color(NamedTextColor.DARK_GRAY))));
 
@@ -226,9 +244,9 @@ public final class SuperPing extends JavaPlugin implements Listener {
                     double distText = p.getLocation().distance(b.getLocation());
                     dist.text(Component.text((int) distText+" m"));
 
-                    p.sendActionBar(Component.empty().append(
-                            Component.text("§bAlvo: ")
-                                    .append(Component.translatable(b.getType().translationKey()).color(TextColor.color(NamedTextColor.AQUA))
+                    p.sendActionBar(Component.empty().color(TextColor.color(PingMenu.getChatColor(type.getValue()))).append(
+                            Component.text("Alvo: ")
+                                    .append(Component.translatable(b.getType().translationKey())
                                             .append(Component.text(" | Distância: "+((int) distText)+" m (X: "+b.getX()+", Y: "+b.getY()+", Z: "+b.getZ()+")")))));
 
                     counter += 1;
@@ -263,7 +281,7 @@ public final class SuperPing extends JavaPlugin implements Listener {
 
             List<Entity> nearbyEntities = (List<Entity>) checkLocation.getWorld().getNearbyEntities(checkLocation, 0.5, 0.5, 0.5);
             for (Entity entity : nearbyEntities) {
-                if (!team.hasEntity(entity) && entity != player && entity instanceof LivingEntity) {
+                if (entity != player && entity instanceof LivingEntity) {
                     return entity;
                 }
             }
@@ -272,14 +290,14 @@ public final class SuperPing extends JavaPlugin implements Listener {
         return null;
     }
 
-    private void drawArrow(Location location, Player p) {
-        double space = 0.20;
-        double defX = location.getX() - (space * arrow[0].length / 2) + (space/2);
+    private void drawShape(Location location, Player p, PingMenu.PingType type) {
+        double space = 0.12;
+        double defX = location.getX() - (space * PingMenu.getShape(type.getValue())[0].length / 2) + (space/2);
         double x = defX;
-        double y = location.clone().getY() + 3.5;
+        double y = location.clone().getY() + 2.3;
         double fire = Math.toRadians(p.getYaw());
 
-        for (boolean[] booleans : arrow) {
+        for (boolean[] booleans : PingMenu.getShape(type.getValue())) {
             for (boolean aBoolean : booleans) {
                 if (aBoolean) {
                     Location target = location.clone();
@@ -290,7 +308,7 @@ public final class SuperPing extends JavaPlugin implements Listener {
                     v = rotateAroundAxisY(v, fire);
 
                     location.add(v);
-                    p.spawnParticle(Particle.DUST, location.getX(), location.getY(), location.getZ(), 1, dust);
+                    p.spawnParticle(Particle.DUST, location.getX(), location.getY(), location.getZ(), 1, PingMenu.getParticleColor(type.getValue()));
                     location.subtract(v);
                 }
                 x += space;
@@ -308,24 +326,4 @@ public final class SuperPing extends JavaPlugin implements Listener {
         z = v.getX() * sin + v.getZ() * cos;
         return v.setX(x).setZ(z);
     }
-
-    private final boolean o = false;
-    private final boolean x = true;
-
-    private final boolean[][] arrow = {
-            { o, o, o, o, o, o, x, x, x, x, o, o, o, o, o, o},
-            { o, o, o, o, o, o, x, x, x, x, o, o, o, o, o, o},
-            { o, o, o, o, o, o, x, x, x, x, o, o, o, o, o, o},
-            { o, o, o, o, o, o, x, x, x, x, o, o, o, o, o, o},
-            { o, o, o, o, o, o, x, x, x, x, o, o, o, o, o, o},
-            { o, o, o, o, o, o, x, x, x, x, o, o, o, o, o, o},
-            { o, o, o, o, o, o, x, x, x, x, o, o, o, o, o, o},
-            { o, o, o, o, o, o, x, x, x, x, o, o, o, o, o, o},
-            { o, o, o, o, o, o, x, x, x, x, o, o, o, o, o, o},
-            { o, o, o, o, o, o, x, x, x, x, o, o, o, o, o, o},
-            { o, o, o, x, x, x, x, x, x, x, x, x, x, o, o, o},
-            { o, o, o, o, x, x, x, x, x, x, x, x, o, o, o, o},
-            { o, o, o, o, o, x, x, x, x, x, x, o, o, o, o, o},
-            { o, o, o, o, o, o, x, x, x, x, o, o, o, o, o, o},
-            { o, o, o, o, o, o, o, x, x, o, o, o, o, o, o, o}};
 }
