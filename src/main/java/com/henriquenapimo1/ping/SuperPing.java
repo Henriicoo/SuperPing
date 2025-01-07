@@ -273,6 +273,9 @@ public final class SuperPing extends JavaPlugin implements Listener {
                     double distText = p.getLocation().distance(b.getLocation());
                     dist.text(Component.text((int) distText+" m"));
 
+                    if(e instanceof BlockDisplay)
+                        ((BlockDisplay) e).setBlock(b.getBlockData());
+
                     if(!isEmpty.contains(false))
                         l.getWorld().getPlayersSeeingChunk(l.getChunk()).forEach(p -> drawShape(b.getLocation().clone().add(0.5,2,0.5),p,type));
 
