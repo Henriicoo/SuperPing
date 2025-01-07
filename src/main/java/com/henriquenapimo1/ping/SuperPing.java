@@ -314,6 +314,12 @@ public final class SuperPing extends JavaPlugin implements Listener {
             List<Entity> nearbyEntities = (List<Entity>) checkLocation.getWorld().getNearbyEntities(checkLocation, 0.5, 0.5, 0.5);
             for (Entity entity : nearbyEntities) {
                 if (entity != player && entity instanceof LivingEntity) {
+                    for (Map.Entry<Integer, Team> entry : teams.entrySet()) {
+                        Team team = entry.getValue();
+                        if (team.hasEntity(entity)) {
+                            return null;
+                        }
+                    }
                     return entity;
                 }
             }
