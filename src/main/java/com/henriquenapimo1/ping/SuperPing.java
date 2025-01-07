@@ -274,7 +274,7 @@ public final class SuperPing extends JavaPlugin implements Listener {
                     dist.text(Component.text((int) distText+" m"));
 
                     if(!isEmpty.contains(false))
-                        l.getWorld().getPlayersSeeingChunk(l.getChunk()).forEach(p -> drawShape(e.getLocation().clone().add(0,2,0),p,type));
+                        l.getWorld().getPlayersSeeingChunk(l.getChunk()).forEach(p -> drawShape(b.getLocation().clone().add(0.5,2,0.5),p,type));
 
                     p.sendActionBar(Component.empty().color(TextColor.color(PingMenu.getChatColor(type.getValue()))).append(
                             Component.text("Alvo: ")
@@ -307,7 +307,8 @@ public final class SuperPing extends JavaPlugin implements Listener {
             Block b = checkLocation.getBlock();
             if (b.getType() != Material.AIR && b.isSolid() && !Tag.ALL_SIGNS.isTagged(b.getType()) && !b.getType().toString().contains("CHEST")
                     && !Tag.BANNERS.isTagged(b.getType()) && !Tag.BEDS.isTagged(b.getType()) &&
-                    !b.getType().toString().equalsIgnoreCase("BAMBOO") && !b.getType().toString().equalsIgnoreCase("POINTED_DRIPSTONE")) {
+                    !b.getType().toString().equalsIgnoreCase("BAMBOO") && !b.getType().toString().equalsIgnoreCase("POINTED_DRIPSTONE") &&
+                    !b.getType().toString().equalsIgnoreCase("SCULK_VEIN")) {
                 return checkLocation.getBlock();
             }
 
